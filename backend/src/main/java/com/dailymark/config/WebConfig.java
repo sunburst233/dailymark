@@ -12,6 +12,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/assets/**")
                 .addResourceLocations(properties.assetsPath().toUri().toString())
+                .addResourceLocations("classpath:/static/assets/")
                 .setCachePeriod(3600);
     }
     @Override public void addInterceptors(InterceptorRegistry registry) {
