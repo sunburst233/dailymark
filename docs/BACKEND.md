@@ -1,5 +1,7 @@
 # DailyMark 后端文档
 
+API 调用说明见 [API.md](API.md)；本文档保留后端实现、配置、部署和已知问题说明。
+
 > 本文档以**当前代码的实际行为**为准。与 [DESIGN.md](DESIGN.md) 的差异见文末“已知问题与待办”。前端见 [FRONTEND.md](FRONTEND.md)。
 
 ## 1. 概述与技术栈
