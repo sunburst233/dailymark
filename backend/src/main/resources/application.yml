@@ -21,6 +21,8 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: ${DAILYMARK_BASE_PATH:}
   forward-headers-strategy: framework
 
 management:

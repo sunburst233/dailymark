@@ -45,6 +45,7 @@ function Toc({ content }: { content: string }) {
 function MarkdownRenderer({ content }: { content: string }) {
   return <div className="markdown-body">
     <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeSanitize, rehypeKatex, rehypeHighlight, rehypeSlug]}
+      urlTransform={url => url.startsWith('/assets/') ? `${import.meta.env.BASE_URL}${url.slice('/'.length)}` : url}
       components={{ a: ({ href, children, ...props }) => <a href={href} target={href?.startsWith('http') ? '_blank' : undefined} rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined} {...props}>{children}</a> }}>
       {content}
     </ReactMarkdown>

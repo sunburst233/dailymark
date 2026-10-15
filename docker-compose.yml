@@ -1,6 +1,9 @@
 services:
   dailymark:
-    build: .
+    build:
+      context: .
+      args:
+        DAILYMARK_BASE_PATH: ${DAILYMARK_BASE_PATH:-}
     image: dailymark:latest
     container_name: dailymark
     restart: unless-stopped
@@ -9,6 +12,7 @@ services:
     environment:
       DAILYMARK_API_KEY: ${DAILYMARK_API_KEY:?DAILYMARK_API_KEY is required}
       DAILYMARK_DATA_DIR: /data
+      DAILYMARK_BASE_PATH: ${DAILYMARK_BASE_PATH:-}
       TZ: Asia/Tokyo
     volumes:
       - ./data:/data

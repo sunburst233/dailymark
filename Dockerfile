@@ -1,5 +1,7 @@
 FROM node:20-alpine AS frontend
 WORKDIR /app/frontend
+ARG DAILYMARK_BASE_PATH=
+ENV VITE_BASE_PATH=${DAILYMARK_BASE_PATH}
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
@@ -15,6 +17,7 @@ RUN mvn -q package -DskipTests
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
+ARG DAILYMARK_BASE_PATH=
 RUN useradd -r -u 1001 dailymark && mkdir -p /data && chown -R dailymark /data
 COPY --from=backend /app/backend/target/*.jar app.jar
 USER dailymark
