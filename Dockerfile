@@ -18,10 +18,11 @@ RUN mvn -q package -DskipTests
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 ARG DAILYMARK_BASE_PATH=
+ARG SERVER_PORT=8080
 RUN useradd -r -u 1001 dailymark && mkdir -p /data && chown -R dailymark /data
 COPY --from=backend /app/backend/target/*.jar app.jar
 USER dailymark
 VOLUME ["/data"]
-EXPOSE 8080
+EXPOSE ${SERVER_PORT}
 ENV JAVA_OPTS="-Xms128m -Xmx512m"
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

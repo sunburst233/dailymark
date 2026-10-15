@@ -4,15 +4,17 @@ services:
       context: .
       args:
         DAILYMARK_BASE_PATH: ${DAILYMARK_BASE_PATH:-}
+        SERVER_PORT: ${SERVER_PORT:-8080}
     image: dailymark:latest
     container_name: dailymark
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
     environment:
       DAILYMARK_API_KEY: ${DAILYMARK_API_KEY:?DAILYMARK_API_KEY is required}
       DAILYMARK_DATA_DIR: /data
       DAILYMARK_BASE_PATH: ${DAILYMARK_BASE_PATH:-}
+      SERVER_PORT: ${SERVER_PORT:-8080}
       TZ: Asia/Tokyo
     volumes:
       - ./data:/data
