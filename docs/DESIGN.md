@@ -475,7 +475,14 @@ DAILYMARK_API_KEY=<openssl rand -hex 32 生成的值>
 docker compose up -d --build
 ```
 
-> 宿主机 `./data` 目录需对容器内 UID 1001 可写：`mkdir -p data && sudo chown 1001 data`。
+> **重要：数据目录权限。** 容器以 UID `1001`（用户 `dailymark`）运行。宿主机的 `./data` 目录必须归 UID `1001` 所有并且可写，否则后端无法创建或写入 `/data/db`、`/data/docs` 和 `/data/assets`，容器会启动失败。首次部署或恢复数据时执行：
+>
+> ```bash
+> mkdir -p data
+> sudo chown -R 1001:1001 data
+> ```
+>
+> 如果 `data` 目录由其他用户或 `root` 创建，必须重新执行上述授权命令；仅创建目录但未授权给 UID `1001` 不足以完成部署。
 
 ### 9.4 使用示例
 

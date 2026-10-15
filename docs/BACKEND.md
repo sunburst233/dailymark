@@ -242,11 +242,13 @@ mvn package -DskipTests
 
 ```bash
 cp .env.example .env     # 编辑 DAILYMARK_API_KEY
-mkdir -p data && sudo chown 1001 data   # 容器用户 UID 1001
+mkdir -p data && sudo chown -R 1001:1001 data   # 容器用户 UID 1001
 docker compose up -d --build
 ```
 
 Dockerfile 为三阶段:`node:20-alpine` 构建前端 → `maven:3.9-eclipse-temurin-17` 构建后端并把 `dist` 放入 `static` → `eclipse-temurin:17-jre` 运行(用户 `dailymark`,`VOLUME /data`,端口 8080)。`docker-compose.yml` 挂载 `./data:/data`,并要求设置 `DAILYMARK_API_KEY`。
+
+> **数据目录权限是启动前置条件：**容器以 UID `1001`（用户 `dailymark`）运行，宿主机 `data` 目录及其已有内容必须对该 UID 可写。未授予 UID `1001` 权限时，后端无法创建或写入 `/data/db`、`/data/docs`、`/data/assets`，会导致后端启动失败。首次部署、恢复数据或目录由其他用户创建后，请执行 `sudo chown -R 1001:1001 data`。
 
 生产环境应置于 Nginx/Caddy/Traefik 之后终止 TLS;备份只需备份数据目录。
 
