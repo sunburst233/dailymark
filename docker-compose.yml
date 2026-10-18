@@ -5,6 +5,7 @@ services:
       args:
         DAILYMARK_BASE_PATH: ${DAILYMARK_BASE_PATH:-}
         SERVER_PORT: ${SERVER_PORT:-8080}
+    build: .
     image: dailymark:latest
     container_name: dailymark
     restart: unless-stopped
