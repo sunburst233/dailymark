@@ -8,7 +8,7 @@
 - API 前缀：`/api`
 - 字符编码：请求上传的 Markdown 文件必须是合法 UTF-8
 - 时间格式：ISO-8601，例如 `2026-10-14T12:00:00Z`
-- 文档和图片的读取接口公开；上传、替换和删除接口需要 API Key
+- 文档和图片的读取接口公开；上传、替换、修改上传时间和删除接口需要 API Key
 
 设置示例变量：
 
@@ -51,8 +51,10 @@ Content-Type: application/json
 | `GET` | `/api/docs/{id}` | 否 | 获取指定文档及正文 |
 | `POST` | `/api/docs` | 是 | 上传文档，可覆盖同名文档 |
 | `PUT` | `/api/docs/{id}` | 是 | 替换指定文档的正文 |
+| `PATCH` | `/api/docs/{id}/uploaded-at` | 是 | 修改指定文档的上传时间 |
 | `DELETE` | `/api/docs/{id}` | 是 | 删除文档 |
 | `POST` | `/api/assets` | 是 | 上传图片 |
+| `PATCH` | `/api/assets/{id}/uploaded-at` | 是 | 修改指定图片的上传时间 |
 | `DELETE` | `/api/assets/{id}` | 是 | 删除图片 |
 | `GET` | `/assets/{filename}` | 否 | 访问已上传图片 |
 | `GET` | `/actuator/health` | 否 | 健康检查 |
@@ -181,7 +183,25 @@ curl -X PUT "$HOST/api/docs/3f1c2a7e-4f7a-4b5e-8a0e-123456789abc" \
 
 替换只更新正文、标题、大小和更新时间；文档的原始 `filename`、`id` 和 `uploadedAt` 保持不变。新上传文件的文件名不会成为该文档的新文件名。文档不存在时响应 `404 Not Found`。
 
-### 4.6 删除文档
+### 4.6 修改文档上传时间
+
+```http
+PATCH /api/docs/{id}/uploaded-at
+Content-Type: application/json
+```
+
+```bash
+curl -X PATCH "$HOST/api/docs/3f1c2a7e-4f7a-4b5e-8a0e-123456789abc/uploaded-at" \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"uploadedAt":"2026-10-14T12:00:00Z"}'
+```
+
+请求体中的 `uploadedAt` 必须是合法的 ISO-8601 `Instant`，允许设置为过去或未来的时间。接口直接修改 `uploadedAt`，不会修改 `updatedAt`。修改后，文档列表、`/api/docs/latest` 和前端日期分组会按新的上传时间计算。
+
+响应：`200 OK`，返回更新后的 `DocSummary`。文档不存在时响应 `404 Not Found`；请求体缺失、时间格式非法或 `uploadedAt` 为 `null` 时响应 `400 Bad Request`。
+
+### 4.7 删除文档
 
 ```http
 DELETE /api/docs/{id}
@@ -218,7 +238,8 @@ curl -X POST "$HOST/api/assets" \
   "id": "a9e2b7d3-5c61-4c9f-9d23-123456789abc",
   "url": "/assets/a9e2b7d3-5c61-4c9f-9d23-123456789abc.png",
   "originalName": "chart.png",
-  "size": 102400
+  "size": 102400,
+  "uploadedAt": "2026-10-14T12:00:00Z"
 }
 ```
 
@@ -230,7 +251,23 @@ curl -X POST "$HOST/api/assets" \
 
 图片 URL 公开可访问，并设置 1 小时缓存。访问 SVG 时会附加 `Content-Security-Policy: script-src 'none'`。
 
-### 5.2 删除图片
+### 5.2 修改图片上传时间
+
+```http
+PATCH /api/assets/{id}/uploaded-at
+Content-Type: application/json
+```
+
+```bash
+curl -X PATCH "$HOST/api/assets/a9e2b7d3-5c61-4c9f-9d23-123456789abc/uploaded-at" \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"uploadedAt":"2026-10-14T12:00:00Z"}'
+```
+
+请求体中的 `uploadedAt` 必须是合法的 ISO-8601 `Instant`，允许设置为过去或未来的时间。接口直接修改图片的 `uploadedAt`，成功返回 `200 OK` 和包含新时间的 `AssetResponse`。图片不存在时响应 `404 Not Found`；请求体缺失、时间格式非法或 `uploadedAt` 为 `null` 时响应 `400 Bad Request`。
+
+### 5.3 删除图片
 
 ```http
 DELETE /api/assets/{id}

@@ -39,6 +39,14 @@ public class DocumentService {
     }
     public DocDetail get(UUID id) { return DocDetail.from(repository.findById(id).orElseThrow(() -> notFound(id))); }
     @Transactional
+    public DocSummary updateUploadedAt(UUID id, UploadedAtRequest request) {
+        if (request == null || request.uploadedAt() == null)
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "uploadedAt is required");
+        Document document = repository.findById(id).orElseThrow(() -> notFound(id));
+        document.updateUploadedAt(request.uploadedAt());
+        return DocSummary.from(repository.save(document));
+    }
+    @Transactional
     public DocSummary upload(MultipartFile file, boolean overwrite) {
         String filename = validate(file);
         Optional<Document> existing = repository.findByFilename(filename);

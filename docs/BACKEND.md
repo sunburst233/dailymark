@@ -54,14 +54,15 @@ backend/src/main/java/com/dailymark/
 | `storage_path` | VARCHAR(512) | `{id}.md` |
 | `size` | BIGINT | 字节数 |
 | `content` | LOB | 正文副本,用于搜索 |
-| `uploaded_at` | TIMESTAMP(Instant) | 首次上传时间,排序依据,覆盖时不变 |
-| `updated_at` | TIMESTAMP(Instant) | 最后修改时间 |
+| `uploaded_at` | TIMESTAMP(Instant) | 上传时间,排序依据;可通过专用接口修正 |
+| `updated_at` | TIMESTAMP(Instant) | 最后修改时间;修改 `uploaded_at` 时保持不变 |
 
 索引:`idx_document_uploaded_at(uploaded_at)`(升序索引,查询为倒序)。
 
 ### 3.2 `asset`
 
 `id`、`filename`(`{id}.{ext}`,唯一)、`original_name`、`storage_path`、`content_type`、`size`、`uploaded_at`。
+`uploaded_at` 可通过专用接口修正，不影响文件内容或其他元数据。
 
 ### 3.3 磁盘布局
 
@@ -94,8 +95,10 @@ HOST=http://localhost:8080
 | GET | `/api/docs/{id}` | 否 | 指定文档(含正文) |
 | POST | `/api/docs` | 是 | 上传文档,字段 `file`,可选 `overwrite=true` |
 | PUT | `/api/docs/{id}` | 是 | 替换指定文档内容,字段 `file` |
+| PATCH | `/api/docs/{id}/uploaded-at` | 是 | 修改文档上传时间,JSON 字段 `uploadedAt` |
 | DELETE | `/api/docs/{id}` | 是 | 删除文档,返回 204 |
 | POST | `/api/assets` | 是 | 上传图片,字段 `file` |
+| PATCH | `/api/assets/{id}/uploaded-at` | 是 | 修改图片上传时间,JSON 字段 `uploadedAt` |
 | DELETE | `/api/assets/{id}` | 是 | 删除图片,返回 204 |
 | GET | `/assets/{filename}` | 否 | 图片访问(缓存 1 小时) |
 | GET | `/actuator/health` | 否 | 健康检查 |
@@ -118,7 +121,7 @@ HOST=http://localhost:8080
 
 `DocDetail` = `DocSummary` + `"content": "..."`。
 
-`AssetResponse`:`{ "id", "url": "/assets/{id}.{ext}", "originalName", "size" }`(设计稿示例;实际字段以 `AssetResponse` 为准)。
+`AssetResponse`:`{ "id", "url": "/assets/{id}.{ext}", "originalName", "size", "uploadedAt" }`。
 
 ### 4.3 文档上传 / 覆盖
 
@@ -143,7 +146,15 @@ curl -X DELETE "$HOST/api/docs/<id>" -H "Authorization: Bearer $KEY"
 
 注意:`PUT` 只校验新文件的扩展名/大小/UTF-8,不要求新文件名与原文档一致。
 
-### 4.4 图片
+### 4.4 修改上传时间
+
+- `PATCH /api/docs/{id}/uploaded-at` 和 `PATCH /api/assets/{id}/uploaded-at` 接收 JSON `{ "uploadedAt": "2026-10-14T12:00:00Z" }`。
+- `uploadedAt` 使用 `Instant` 解析合法 ISO-8601 时间，不限制过去或未来。
+- 文档接口只更新 `Document.uploadedAt`，不更新 `updatedAt`；图片接口只更新 `Asset.uploadedAt`。
+- 文档时间变化会影响列表排序、`latest` 查询和前端按日期分组。
+- 两个接口均由 `ApiKeyFilter` 按写操作规则保护；不存在的 UUID 返回 `404`，缺失或非法时间返回 `400`。
+
+### 4.5 图片
 
 ```bash
 curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@chart.png;type=image/png"
@@ -151,7 +162,7 @@ curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@chart.
 
 在 Markdown 中使用返回的 `url`:`![](/assets/xxx.png)`。
 
-### 4.5 校验与限制
+### 4.6 校验与限制
 
 | 项 | 规则 | 失败状态码 |
 | --- | --- | --- |
@@ -166,7 +177,7 @@ curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@chart.
 
 SVG 通过 `/assets/*.svg` 访问时附带 `Content-Security-Policy: script-src 'none'`。
 
-### 4.6 错误格式
+### 4.7 错误格式
 
 由 `GlobalExceptionHandler` 统一处理 `BusinessException`、`MaxUploadSizeExceededException` 和兜底 `Exception`(500,`Internal server error`)。
 
@@ -182,7 +193,7 @@ SVG 通过 `/assets/*.svg` 访问时附带 `Content-Security-Policy: script-src 
 
 状态码:400 参数/校验、401 未鉴权、404 不存在、409 同名冲突、413 过大、500 内部错误。
 
-### 4.7 搜索
+### 4.8 搜索
 
 `DocumentRepository.search`:对 `title` 与 `content` 做不区分大小写的 `LIKE '%kw%'`(`escape '\'`),关键词中的 `\`、`%`、`_` 已转义;结果按 `uploadedAt` 倒序。适用于数千篇以内。
 
@@ -234,7 +245,7 @@ mvn spring-boot:run
 ### 测试与打包
 
 ```bash
-mvn test            # 目前仅有 DocumentServiceTest
+  mvn test            # 服务、控制器和 API Key 过滤器测试
 mvn package -DskipTests
 ```
 

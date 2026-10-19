@@ -22,4 +22,5 @@ public class Asset {
     public UUID getId(){return id;} public String getFilename(){return filename;} public String getOriginalName(){return originalName;}
     public String getStoragePath(){return storagePath;} public String getContentType(){return contentType;} public long getSize(){return size;}
     public Instant getUploadedAt(){return uploadedAt;}
+    public void updateUploadedAt(Instant uploadedAt){this.uploadedAt = uploadedAt;}
 }

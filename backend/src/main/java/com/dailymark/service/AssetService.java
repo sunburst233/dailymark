@@ -2,6 +2,7 @@ package com.dailymark.service;
 
 import com.dailymark.config.StorageProperties;
 import com.dailymark.dto.AssetResponse;
+import com.dailymark.dto.UploadedAtRequest;
 import com.dailymark.entity.Asset;
 import com.dailymark.exception.BusinessException;
 import com.dailymark.repository.AssetRepository;
@@ -22,6 +23,15 @@ public class AssetService {
     private final StorageProperties properties;
     public AssetService(AssetRepository repository, StorageService storage, StorageProperties properties) {
         this.repository=repository; this.storage=storage; this.properties=properties;
+    }
+    @Transactional
+    public AssetResponse updateUploadedAt(UUID id, UploadedAtRequest request) {
+        if (request == null || request.uploadedAt() == null)
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "uploadedAt is required");
+        Asset asset = repository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Asset not found: " + id));
+        asset.updateUploadedAt(request.uploadedAt());
+        return AssetResponse.from(repository.save(asset));
     }
     @Transactional
     public AssetResponse upload(MultipartFile file) {

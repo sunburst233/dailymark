@@ -43,6 +43,7 @@ public class Document {
     public String getContent() { return content; }
     public Instant getUploadedAt() { return uploadedAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public void updateUploadedAt(Instant uploadedAt) { this.uploadedAt = uploadedAt; }
     public void replace(String slug, String title, long size, String content, Instant updatedAt) {
         this.slug = slug; this.title = title; this.size = size; this.content = content; this.updatedAt = updatedAt;
     }

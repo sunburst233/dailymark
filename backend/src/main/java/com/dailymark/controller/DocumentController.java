@@ -15,6 +15,10 @@ public class DocumentController {
     @GetMapping public List<DocSummary> list(@RequestParam(required = false) String q) { return service.list(q); }
     @GetMapping("/latest") public DocDetail latest() { return service.latest(); }
     @GetMapping("/{id}") public DocDetail get(@PathVariable UUID id) { return service.get(id); }
+    @PatchMapping("/{id}/uploaded-at")
+    public DocSummary updateUploadedAt(@PathVariable UUID id, @RequestBody UploadedAtRequest request) {
+        return service.updateUploadedAt(id, request);
+    }
     @PostMapping public ResponseEntity<DocSummary> upload(@RequestParam MultipartFile file,
                                                             @RequestParam(defaultValue = "false") boolean overwrite) {
         boolean existed = service.existsByFilename(file.getOriginalFilename());

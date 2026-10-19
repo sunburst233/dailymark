@@ -98,8 +98,8 @@ Markdown 原文以文件形式存在 `/data/docs`，元数据存在 H2。正文�
 | `storage_path` | VARCHAR(512) | 相对 `/data/docs` 的存储路径，格式为 `{id}.md` |
 | `size` | BIGINT | 字节数 |
 | `content` | CLOB | 正文副本，用于搜索 |
-| `uploaded_at` | TIMESTAMP | 首次上传时间（服务器时间），**排序依据**，覆盖时不变 |
-| `updated_at` | TIMESTAMP | 最后修改时间 |
+| `uploaded_at` | TIMESTAMP | 上传时间（服务器时间），**排序依据**；可通过专用接口修正 |
+| `updated_at` | TIMESTAMP | 最后修改时间；修正 `uploaded_at` 时保持不变 |
 
 索引：`idx_document_uploaded_at (uploaded_at DESC)`、`uk_document_filename (filename)`。
 
@@ -137,8 +137,10 @@ Markdown 原文以文件形式存在 `/data/docs`，元数据存在 H2。正文�
 | GET | `/api/docs/{id}` | 否 | 指定文档（元数据 + 正文） |
 | POST | `/api/docs` | 是 | 上传文档（multipart，字段 `file`），可选 `?overwrite=true` |
 | PUT | `/api/docs/{id}` | 是 | 替换指定文档内容（multipart，字段 `file`） |
+| PATCH | `/api/docs/{id}/uploaded-at` | 是 | 修改文档上传时间（JSON，字段 `uploadedAt`） |
 | DELETE | `/api/docs/{id}` | 是 | 删除文档 |
 | POST | `/api/assets` | 是 | 上传图片（multipart，字段 `file`） |
+| PATCH | `/api/assets/{id}/uploaded-at` | 是 | 修改图片上传时间（JSON，字段 `uploadedAt`） |
 | DELETE | `/api/assets/{id}` | 是 | 删除图片 |
 | GET | `/assets/{filename}` | 否 | 图片静态访问 |
 | GET | `/actuator/health` | 否 | 健康检查 |
@@ -163,10 +165,10 @@ Markdown 原文以文件形式存在 `/data/docs`，元数据存在 H2。正文�
 
 **详情 `DocDetail`**（`GET /api/docs/latest`、`GET /api/docs/{id}`）：在 `DocSummary` 的基础上增加 `"content": "# 10 月 14 日日报\n..."`。
 
-**图片上传响应**
+**图片响应**
 
 ```json
-{ "id": "a9e2...", "url": "/assets/a9e2....png", "originalName": "chart.png", "size": 102400 }
+{ "id": "a9e2...", "url": "/assets/a9e2....png", "originalName": "chart.png", "size": 102400, "uploadedAt": "2026-10-14T21:00:00Z" }
 ```
 
 ### 4.3 上传 / 覆盖规则
@@ -179,7 +181,14 @@ Markdown 原文以文件形式存在 `/data/docs`，元数据存在 H2。正文�
 - 写入顺序：先写临时文件 `{id}.md.tmp`，再原子重命名为 `{id}.md`，最后在事务中更新数据库，防止半写文件
 - `DELETE /api/docs/{id}`：删除数据库记录和磁盘文件，返回 `204 No Content`
 
-### 4.4 校验与限制
+### 4.4 修改上传时间
+
+- `PATCH /api/docs/{id}/uploaded-at` 和 `PATCH /api/assets/{id}/uploaded-at` 接收 `{ "uploadedAt": "2026-10-14T12:00:00Z" }`。
+- `uploadedAt` 使用合法的 ISO-8601 `Instant`，允许过去或未来时间。
+- 文档接口不更新 `updatedAt`；文档列表、`latest` 和前端日期分组会按新的 `uploadedAt` 计算。
+- 两个接口均需要 Bearer API Key；资源不存在返回 `404`，请求体缺失或时间格式非法返回 `400`。
+
+### 4.5 校验与限制
 
 | 项 | 限制 |
 | --- | --- |
@@ -191,7 +200,7 @@ Markdown 原文以文件形式存在 `/data/docs`，元数据存在 H2。正文�
 
 `spring.servlet.multipart.max-file-size=10MB`，文档的 5 MB 限制在业务层校验。
 
-### 4.5 统一错误格式
+### 4.6 统一错误格式
 
 ```json
 {
@@ -211,7 +220,7 @@ Markdown 原文以文件形式存在 `/data/docs`，元数据存在 H2。正文�
 
 - 使用单个固定 API Key，来自环境变量 `DAILYMARK_API_KEY`
 - 客户端请求头：`Authorization: Bearer <key>`
-- 只有写操作需要鉴权：`/api/**` 下的 `POST` / `PUT` / `DELETE`
+- 只有写操作需要鉴权：`/api/**` 下的 `POST` / `PUT` / `PATCH` / `DELETE`
 - 所有 `GET` 请求、静态资源、`/assets/**`、`/actuator/health` 公开
 
 ### 5.2 实现要点
@@ -222,7 +231,7 @@ sequenceDiagram
     participant F as ApiKeyFilter
     participant S as SecurityFilterChain
     participant A as Controller
-    C->>F: POST /api/docs + Authorization
+    C->>F: PATCH /api/docs/{id}/uploaded-at + Authorization
     alt Key 正确
         F->>S: 设置 Authentication (ROLE_UPLOADER)
         S->>A: 放行

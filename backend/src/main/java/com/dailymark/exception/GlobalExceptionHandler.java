@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
@@ -16,6 +17,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<ErrorResponse> tooLarge(MaxUploadSizeExceededException e, HttpServletRequest request) {
         return response(HttpStatus.PAYLOAD_TOO_LARGE, "Uploaded file is too large", request);
+    }
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ErrorResponse> unreadable(HttpMessageNotReadableException e, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "Request body is invalid", request);
     }
     @ExceptionHandler(Exception.class)
     ResponseEntity<ErrorResponse> other(Exception e, HttpServletRequest request) {
