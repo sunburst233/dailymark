@@ -12,12 +12,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.json.JsonMapper;
 
 class UploadedAtControllerTest {
     private MockMvc mockMvc;
@@ -28,14 +26,14 @@ class UploadedAtControllerTest {
     void setUp() {
         documentService = new TestDocumentService();
         assetService = new TestAssetService();
-        ObjectMapper objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        JsonMapper objectMapper = JsonMapper.builder()
+                .findAndAddModules()
+                .build();
         mockMvc = MockMvcBuilders.standaloneSetup(
                         new DocumentController(documentService),
                         new AssetController(assetService))
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
+                .setMessageConverters(new JacksonJsonHttpMessageConverter(objectMapper))
                 .build();
     }
 

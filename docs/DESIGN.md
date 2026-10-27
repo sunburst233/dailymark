@@ -66,8 +66,8 @@ flowchart LR
 
 | 用途 | 选型 |
 | --- | --- |
-| 框架 / 构建 | React 18 + Vite + TypeScript |
-| 路由 | React Router v6 |
+| 框架 / 构建 | React 19 + Vite 8.3 + TypeScript 7 |
+| 路由 | React Router v8 |
 | Markdown 渲染 | `react-markdown` + `remark-gfm` + `remark-math` |
 | 后处理 | `rehype-sanitize`（XSS 过滤）、`rehype-katex`（公式）、`rehype-highlight`（代码高亮）、`rehype-slug`（标题锚点） |
 | 样式 | `github-markdown-css` + 少量自定义 CSS |
@@ -76,7 +76,7 @@ flowchart LR
 
 | 用途 | 选型 |
 | --- | --- |
-| 运行时 | Java 17，Spring Boot 3.x |
+| 运行时 | Java 25，Spring Boot 4.1 |
 | Web | Spring Web（MVC） |
 | 持久化 | Spring Data JPA + H2（文件模式） |
 | 安全 | Spring Security + 自定义 `ApiKeyFilter` |
@@ -422,7 +422,7 @@ management:
 
 ```dockerfile
 # ---------- 1. 构建前端 ----------
-FROM node:20-alpine AS frontend
+FROM node:26-alpine AS frontend
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
@@ -430,7 +430,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---------- 2. 构建后端 ----------
-FROM maven:3.9-eclipse-temurin-17 AS backend
+FROM maven:3.9-eclipse-temurin-25 AS backend
 WORKDIR /app/backend
 COPY backend/pom.xml ./
 RUN mvn -q dependency:go-offline
@@ -439,7 +439,7 @@ COPY --from=frontend /app/frontend/dist ./src/main/resources/static
 RUN mvn -q package -DskipTests
 
 # ---------- 3. 运行 ----------
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN useradd -r -u 1001 dailymark && mkdir -p /data && chown dailymark /data
 COPY --from=backend /app/backend/target/*.jar app.jar
@@ -452,7 +452,7 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
 ```
 
-> `eclipse-temurin:17-jre` 镜像自带的是 `curl` 还是 `wget` 需要在实现时确认，健康检查命令按实际可用工具调整。
+> `eclipse-temurin:25-jre` 镜像自带的是 `curl` 还是 `wget` 需要在实现时确认，健康检查命令按实际可用工具调整。
 
 ### 9.3 docker-compose.yml
 

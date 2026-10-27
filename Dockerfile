@@ -1,13 +1,13 @@
-FROM node:20-alpine AS frontend
+FROM node:26-alpine AS frontend
 WORKDIR /app/frontend
 ARG DAILYMARK_BASE_PATH=
 ENV VITE_BASE_PATH=${DAILYMARK_BASE_PATH}
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM maven:3.9-eclipse-temurin-17 AS backend
+FROM maven:3.9-eclipse-temurin-25 AS backend
 WORKDIR /app/backend
 COPY backend/pom.xml ./
 RUN mvn -q dependency:go-offline
@@ -15,7 +15,7 @@ COPY backend/src ./src
 COPY --from=frontend /app/frontend/dist ./src/main/resources/static
 RUN mvn -q package -DskipTests
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 ARG DAILYMARK_BASE_PATH=
 ARG SERVER_PORT=8080

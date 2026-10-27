@@ -10,7 +10,7 @@ API 调用说明见 [API.md](API.md)；本文档保留后端实现、配置、�
 
 | 用途 | 选型 |
 | --- | --- |
-| 运行时 | Java 17,Spring Boot 3.3.5 |
+| 运行时 | Java 25,Spring Boot 4.1.2 |
 | Web | Spring Web MVC |
 | 持久化 | Spring Data JPA + H2(文件模式) |
 | 安全 | Spring Security + 自定义 `ApiKeyFilter` |
@@ -257,7 +257,7 @@ mkdir -p data && sudo chown -R 1001:1001 data   # 容器用户 UID 1001
 docker compose up -d --build
 ```
 
-Dockerfile 为三阶段:`node:20-alpine` 构建前端 → `maven:3.9-eclipse-temurin-17` 构建后端并把 `dist` 放入 `static` → `eclipse-temurin:17-jre` 运行(用户 `dailymark`,`VOLUME /data`,端口 8080)。`docker-compose.yml` 挂载 `./data:/data`,并要求设置 `DAILYMARK_API_KEY`。
+Dockerfile 为三阶段:`node:26-alpine` 构建前端 → `maven:3.9-eclipse-temurin-25` 构建后端并把 `dist` 放入 `static` → `eclipse-temurin:25-jre` 运行(用户 `dailymark`,`VOLUME /data`,端口 8080)。`docker-compose.yml` 挂载 `./data:/data`,并要求设置 `DAILYMARK_API_KEY`。
 
 > **数据目录权限是启动前置条件：**容器以 UID `1001`（用户 `dailymark`）运行，宿主机 `data` 目录及其已有内容必须对该 UID 可写。未授予 UID `1001` 权限时，后端无法创建或写入 `/data/db`、`/data/docs`、`/data/assets`，会导致后端启动失败。首次部署、恢复数据或目录由其他用户创建后，请执行 `sudo chown -R 1001:1001 data`。
 
@@ -273,7 +273,7 @@ Dockerfile 为三阶段:`node:20-alpine` 构建前端 → `maven:3.9-eclipse-tem
 6. 删除文档/图片时磁盘文件删除失败被静默忽略(`IOException` 被吞掉);先删库后删文件。
 7. 上传/覆盖的写入顺序是先写文件、再写库;库操作失败时可能残留文件。覆盖时旧文件被直接替换,事务回滚无法恢复。
 8. 设计稿要求的上传/删除操作日志、鉴权失败日志(来源 IP + 路径)、`X-Frame-Options` 等响应头未专门配置(依赖 Spring Security 默认)。
-9. `Dockerfile` 无 `HEALTHCHECK`;前端阶段用 `npm install` 而非 `npm ci`。
+9. `Dockerfile` 无 `HEALTHCHECK`。
 10. `/api/docs/latest` 通过加载全部文档(含 `content`)再取第一个,文档多时效率低;列表接口同样加载完整实体。
 11. 设计稿中 `uk_document_filename`、`idx_document_uploaded_at (DESC)` 的命名/降序未完全对应。
 12. 测试覆盖仅 `DocumentServiceTest` 一例,缺少 `AssetService`、鉴权过滤器、控制器与覆盖/冲突场景的测试。

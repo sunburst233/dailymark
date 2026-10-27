@@ -16,8 +16,8 @@ DailyMark 是一个轻量的 Markdown 文档展示站点。文档通过带 API K
 
 ## 技术栈
 
-- 前端：React 18、Vite、TypeScript、React Router、react-markdown
-- 后端：Java 17、Spring Boot 3.3、Spring MVC、Spring Data JPA、H2
+- 前端：React 19、Vite 8.3、TypeScript 7、React Router 8、react-markdown
+- 后端：Java 25、Spring Boot 4.1、Spring MVC、Spring Data JPA、H2
 - 安全：Spring Security、自定义 API Key 过滤器
 - 部署：Docker Compose，单个 Spring Boot 进程同时提供 API 和前端静态资源
 
@@ -72,7 +72,7 @@ mvn spring-boot:run
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 

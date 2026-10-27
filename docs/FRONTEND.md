@@ -8,8 +8,8 @@
 
 | 用途 | 选型 |
 | --- | --- |
-| 框架 / 构建 | React 18 + Vite 5 + TypeScript 5 |
-| 路由 | React Router v6 |
+| 框架 / 构建 | React 19 + Vite 8.3 + TypeScript 7 |
+| 路由 | React Router v8 |
 | Markdown | `react-markdown` 9 + `remark-gfm` + `remark-math` |
 | 后处理 | `rehype-sanitize`、`rehype-katex`、`rehype-highlight`、`rehype-slug` |
 | 样式 | `github-markdown-css`(light)、`katex` CSS、`highlight.js` github 主题、`styles.css` |
@@ -97,9 +97,9 @@ remarkGfm → remarkMath → rehypeSanitize(默认 schema) → rehypeKatex → r
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev      # Vite 开发服务器,/api 和 /assets 代理到 http://localhost:8080
-npm run build    # tsc -b && vite build,产物在 dist/
+npm run build    # tsc --noEmit && vite build,产物在 dist/
 npm test         # vitest run
 ```
 

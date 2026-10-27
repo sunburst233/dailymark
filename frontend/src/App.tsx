@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
