@@ -1,6 +1,6 @@
 # DailyMark
 
-DailyMark 是一个轻量的 Markdown 文档展示站点。文档通过带 API Key 鉴权的接口上传，浏览者无需登录即可在网页中阅读、搜索和查看图片。
+DailyMark 是一个轻量的 Markdown 文档展示站点。文档通过带 API Key 鉴权的接口上传，浏览者无需登录即可在网页中阅读、搜索和查看图片及 PDF 附件。
 
 ## 功能
 
@@ -8,7 +8,7 @@ DailyMark 是一个轻量的 Markdown 文档展示站点。文档通过带 API K
 - 按上传时间分组的文档列表和标题/正文搜索
 - 支持 GFM、代码高亮、数学公式、标题目录
 - 通过 API 上传、覆盖、替换和删除 Markdown 文档
-- 上传 Markdown 中使用的图片，并通过公开 URL 引用
+- 上传 Markdown 中使用的图片和 PDF 附件，并通过公开 URL 引用
 - 写操作使用 Bearer API Key 鉴权，读操作公开
 - H2 文件数据库和本地文件存储，适合个人或小规模文档库
 
@@ -53,7 +53,7 @@ DailyMark 是一个轻量的 Markdown 文档展示站点。文档通过带 API K
 
 4. 打开 <http://localhost:8080>，健康检查地址为 <http://localhost:8080/actuator/health>。
 
-Docker Compose 会将 `DAILYMARK_DATA_DIR` 设置为 `/data`，并把本地 `./data` 挂载到容器中的 `/data`。数据库、Markdown 文件和图片都会保存在该目录中。
+Docker Compose 会将 `DAILYMARK_DATA_DIR` 设置为 `/data`，并把本地 `./data` 挂载到容器中的 `/data`。数据库、Markdown 文件、图片和 PDF 附件都会保存在该目录中。
 
 ### 本地开发
 
@@ -121,9 +121,14 @@ curl -X POST "$HOST/api/docs" \
 curl -X POST "$HOST/api/assets" \
   -H "Authorization: Bearer $KEY" \
   -F "file=@chart.png;type=image/png"
+
+# 上传 PDF 附件
+curl -X POST "$HOST/api/assets" \
+  -H "Authorization: Bearer $KEY" \
+  -F "file=@manual.pdf;type=application/pdf"
 ```
 
-上传图片后，将响应中的 `url` 写入 Markdown，例如：
+上传图片后，可以将响应中的 `url` 写入 Markdown，例如：
 
 ```markdown
 ![图表](/assets/<asset-id>.png)
@@ -147,7 +152,7 @@ curl -X POST "$HOST/api/assets" \
 data/
 ├── db/       # H2 数据库
 ├── docs/     # Markdown 文件
-└── assets/   # 图片文件
+└── assets/   # 图片和 PDF 附件
 ```
 
 备份整个 `data` 目录即可备份应用数据。生产环境建议在 Nginx、Caddy 或 Traefik 后运行，并通过 HTTPS 传输 API Key。

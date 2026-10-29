@@ -139,10 +139,10 @@ Markdown 原文以文件形式存在 `/data/docs`，元数据存在 H2。正文�
 | PUT | `/api/docs/{id}` | 是 | 替换指定文档内容（multipart，字段 `file`） |
 | PATCH | `/api/docs/{id}/uploaded-at` | 是 | 修改文档上传时间（JSON，字段 `uploadedAt`） |
 | DELETE | `/api/docs/{id}` | 是 | 删除文档 |
-| POST | `/api/assets` | 是 | 上传图片（multipart，字段 `file`） |
-| PATCH | `/api/assets/{id}/uploaded-at` | 是 | 修改图片上传时间（JSON，字段 `uploadedAt`） |
-| DELETE | `/api/assets/{id}` | 是 | 删除图片 |
-| GET | `/assets/{filename}` | 否 | 图片静态访问 |
+| POST | `/api/assets` | 是 | 上传图片或 PDF（multipart，字段 `file`） |
+| PATCH | `/api/assets/{id}/uploaded-at` | 是 | 修改附件上传时间（JSON，字段 `uploadedAt`） |
+| DELETE | `/api/assets/{id}` | 是 | 删除附件 |
+| GET | `/assets/{filename}` | 否 | 附件静态访问 |
 | GET | `/actuator/health` | 否 | 健康检查 |
 
 ### 4.2 数据结构
@@ -505,8 +505,9 @@ curl -X POST "$HOST/api/docs" -H "Authorization: Bearer $KEY" -F "file=@2026-10-
 # 覆盖同名文档
 curl -X POST "$HOST/api/docs?overwrite=true" -H "Authorization: Bearer $KEY" -F "file=@2026-10-14-daily.md"
 
-# 上传图片，返回的 url 用于 Markdown 引用
-curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@chart.png"
+# 上传图片或 PDF 附件，返回的 url 用于引用
+curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@chart.png;type=image/png"
+curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@manual.pdf;type=application/pdf"
 
 # 删除文档
 curl -X DELETE "$HOST/api/docs/<id>" -H "Authorization: Bearer $KEY"

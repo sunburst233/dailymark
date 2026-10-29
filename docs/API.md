@@ -8,7 +8,7 @@
 - API 前缀：`/api`
 - 字符编码：请求上传的 Markdown 文件必须是合法 UTF-8
 - 时间格式：ISO-8601，例如 `2026-10-14T12:00:00Z`
-- 文档和图片的读取接口公开；上传、替换、修改上传时间和删除接口需要 API Key
+- 文档和附件的读取接口公开；上传、替换、修改上传时间和删除接口需要 API Key
 
 设置示例变量：
 
@@ -53,10 +53,10 @@ Content-Type: application/json
 | `PUT` | `/api/docs/{id}` | 是 | 替换指定文档的正文 |
 | `PATCH` | `/api/docs/{id}/uploaded-at` | 是 | 修改指定文档的上传时间 |
 | `DELETE` | `/api/docs/{id}` | 是 | 删除文档 |
-| `POST` | `/api/assets` | 是 | 上传图片 |
-| `PATCH` | `/api/assets/{id}/uploaded-at` | 是 | 修改指定图片的上传时间 |
-| `DELETE` | `/api/assets/{id}` | 是 | 删除图片 |
-| `GET` | `/assets/{filename}` | 否 | 访问已上传图片 |
+| `POST` | `/api/assets` | 是 | 上传图片或 PDF 附件 |
+| `PATCH` | `/api/assets/{id}/uploaded-at` | 是 | 修改指定附件的上传时间 |
+| `DELETE` | `/api/assets/{id}` | 是 | 删除附件 |
+| `GET` | `/assets/{filename}` | 否 | 访问已上传附件 |
 | `GET` | `/actuator/health` | 否 | 健康检查 |
 
 `{id}` 是 UUID。所有成功的 JSON 响应均使用 `Content-Type: application/json`。
@@ -214,21 +214,29 @@ curl -X DELETE "$HOST/api/docs/3f1c2a7e-4f7a-4b5e-8a0e-123456789abc" \
 
 成功响应：`204 No Content`，无响应正文。文档不存在时响应 `404 Not Found`。
 
-## 5. 图片接口
+## 5. 图片和 PDF 附件接口
 
-### 5.1 上传图片
+### 5.1 上传图片或 PDF
 
 ```http
 POST /api/assets
 Content-Type: multipart/form-data
 ```
 
-请求字段必须为 `file`。支持 `png`、`jpg`、`jpeg`、`gif`、`webp` 和 `svg`，并且 MIME 类型必须与扩展名匹配。
+请求字段必须为 `file`。支持 `png`、`jpg`、`jpeg`、`gif`、`webp`、`svg` 和 `pdf`，并且 MIME 类型必须与扩展名匹配（PDF 使用 `application/pdf`）。
 
 ```bash
 curl -X POST "$HOST/api/assets" \
   -H "Authorization: Bearer $KEY" \
   -F "file=@chart.png;type=image/png"
+```
+
+PDF 上传示例：
+
+```bash
+curl -X POST "$HOST/api/assets" \
+  -H "Authorization: Bearer $KEY" \
+  -F "file=@manual.pdf;type=application/pdf"
 ```
 
 响应：`200 OK`
@@ -243,15 +251,15 @@ curl -X POST "$HOST/api/assets" \
 }
 ```
 
-建议在 Markdown 中直接使用响应中的 `url`：
+图片可以在 Markdown 中直接使用响应中的 `url`：
 
 ```markdown
 ![图表](/assets/a9e2b7d3-5c61-4c9f-9d23-123456789abc.png)
 ```
 
-图片 URL 公开可访问，并设置 1 小时缓存。访问 SVG 时会附加 `Content-Security-Policy: script-src 'none'`。
+图片和 PDF URL 公开可访问，并设置 1 小时缓存。访问 SVG 时会附加 `Content-Security-Policy: script-src 'none'`。
 
-### 5.2 修改图片上传时间
+### 5.2 修改附件上传时间
 
 ```http
 PATCH /api/assets/{id}/uploaded-at
@@ -265,9 +273,9 @@ curl -X PATCH "$HOST/api/assets/a9e2b7d3-5c61-4c9f-9d23-123456789abc/uploaded-at
   -d '{"uploadedAt":"2026-10-14T12:00:00Z"}'
 ```
 
-请求体中的 `uploadedAt` 必须是合法的 ISO-8601 `Instant`，允许设置为过去或未来的时间。接口直接修改图片的 `uploadedAt`，成功返回 `200 OK` 和包含新时间的 `AssetResponse`。图片不存在时响应 `404 Not Found`；请求体缺失、时间格式非法或 `uploadedAt` 为 `null` 时响应 `400 Bad Request`。
+请求体中的 `uploadedAt` 必须是合法的 ISO-8601 `Instant`，允许设置为过去或未来的时间。接口直接修改附件的 `uploadedAt`，成功返回 `200 OK` 和包含新时间的 `AssetResponse`。附件不存在时响应 `404 Not Found`；请求体缺失、时间格式非法或 `uploadedAt` 为 `null` 时响应 `400 Bad Request`。
 
-### 5.3 删除图片
+### 5.3 删除附件
 
 ```http
 DELETE /api/assets/{id}
@@ -278,7 +286,7 @@ curl -X DELETE "$HOST/api/assets/a9e2b7d3-5c61-4c9f-9d23-123456789abc" \
   -H "Authorization: Bearer $KEY"
 ```
 
-成功响应：`204 No Content`。图片不存在时响应 `404 Not Found`。
+成功响应：`204 No Content`。附件不存在时响应 `404 Not Found`。
 
 ## 6. 健康检查
 
@@ -305,8 +313,9 @@ curl "$HOST/actuator/health"
 | Markdown 扩展名 | `.md`、`.markdown` |
 | Markdown 大小 | 不超过 5 MiB |
 | Markdown 编码 | 合法 UTF-8 |
-| 图片扩展名 | `.png`、`.jpg`、`.jpeg`、`.gif`、`.webp`、`.svg` |
-| 图片大小 | 不超过 10 MiB |
+| 附件扩展名 | `.png`、`.jpg`、`.jpeg`、`.gif`、`.webp`、`.svg`、`.pdf` |
+| 附件 MIME | 必须与扩展名匹配；PDF 使用 `application/pdf` |
+| 附件大小 | 不超过 10 MiB |
 | 文件名 | 非空，去除路径后不超过 255 个字符，不能为 `.` 或 `..` |
 | 单文件 multipart 限制 | 10 MB |
 | 单次请求 multipart 限制 | 11 MB |
@@ -331,7 +340,7 @@ curl "$HOST/actuator/health"
 | --- | --- | --- |
 | `400` | Bad Request | 文件缺失、扩展名不支持、编码无效、MIME 类型不匹配 |
 | `401` | Unauthorized | 写操作缺少或携带了错误的 API Key |
-| `404` | Not Found | 文档或图片不存在，或没有任何文档可供获取 |
+| `404` | Not Found | 文档或附件不存在，或没有任何文档可供获取 |
 | `409` | Conflict | 上传同名文档且未设置 `overwrite=true` |
 | `413` | Payload Too Large | 文件超过业务限制或 multipart 请求限制 |
 | `500` | Internal Server Error | 未预期的服务端错误 |
@@ -339,23 +348,28 @@ curl "$HOST/actuator/health"
 ## 9. 完整调用流程示例
 
 ```bash
-# 1. 上传图片
+# 1. 上传 PDF 附件
+curl -X POST "$HOST/api/assets" \
+  -H "Authorization: Bearer $KEY" \
+  -F "file=@manual.pdf;type=application/pdf"
+
+# 2. 上传图片
 curl -X POST "$HOST/api/assets" \
   -H "Authorization: Bearer $KEY" \
   -F "file=@chart.png;type=image/png"
 
-# 2. 在 Markdown 中引用返回的图片 URL，并上传文档
+# 3. 在 Markdown 中引用返回的图片 URL，并上传文档
 curl -X POST "$HOST/api/docs" \
   -H "Authorization: Bearer $KEY" \
   -F "file=@2026-10-14-daily.md"
 
-# 3. 查询文档列表
+# 4. 查询文档列表
 curl "$HOST/api/docs"
 
-# 4. 获取指定文档
+# 5. 获取指定文档
 curl "$HOST/api/docs/<document-id>"
 
-# 5. 删除文档
+# 6. 删除文档
 curl -X DELETE "$HOST/api/docs/<document-id>" \
   -H "Authorization: Bearer $KEY"
 ```

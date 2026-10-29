@@ -6,7 +6,7 @@ API 调用说明见 [API.md](API.md)；本文档保留后端实现、配置、�
 
 ## 1. 概述与技术栈
 
-单个 Spring Boot 进程同时提供 REST API、图片静态访问和前端静态资源(构建时将前端 `dist` 复制到 `src/main/resources/static`)。
+单个 Spring Boot 进程同时提供 REST API、附件静态访问和前端静态资源(构建时将前端 `dist` 复制到 `src/main/resources/static`)。
 
 | 用途 | 选型 |
 | --- | --- |
@@ -33,7 +33,7 @@ backend/src/main/java/com/dailymark/
 │   └── SpaForwardController.java# / 与 /doc/** 转发到 /index.html
 ├── service/
 │   ├── DocumentService.java     # 校验、标题/slug 提取、搜索、覆盖
-│   ├── AssetService.java        # 图片校验与存储
+│   ├── AssetService.java        # 图片/PDF 校验与存储
 │   └── StorageService.java      # 文件落盘(临时文件 + 原子移动)
 ├── repository/                  # DocumentRepository, AssetRepository
 ├── entity/                      # Document, Asset
@@ -70,7 +70,7 @@ backend/src/main/java/com/dailymark/
 {data-dir}
 ├── db/        # H2 数据库 dailymark.mv.db
 ├── docs/      # {id}.md
-└── assets/    # {id}.{ext}
+└── assets/    # {id}.{ext}，图片或 PDF
 ```
 
 写入流程:`file.transferTo({target}.tmp)` → 原子移动(`ATOMIC_MOVE`,不支持时退化为普通移动并覆盖)→ 保存数据库记录。数据库中的 `content` 是搜索用副本。
@@ -97,10 +97,10 @@ HOST=http://localhost:8080
 | PUT | `/api/docs/{id}` | 是 | 替换指定文档内容,字段 `file` |
 | PATCH | `/api/docs/{id}/uploaded-at` | 是 | 修改文档上传时间,JSON 字段 `uploadedAt` |
 | DELETE | `/api/docs/{id}` | 是 | 删除文档,返回 204 |
-| POST | `/api/assets` | 是 | 上传图片,字段 `file` |
-| PATCH | `/api/assets/{id}/uploaded-at` | 是 | 修改图片上传时间,JSON 字段 `uploadedAt` |
-| DELETE | `/api/assets/{id}` | 是 | 删除图片,返回 204 |
-| GET | `/assets/{filename}` | 否 | 图片访问(缓存 1 小时) |
+| POST | `/api/assets` | 是 | 上传图片或 PDF,字段 `file` |
+| PATCH | `/api/assets/{id}/uploaded-at` | 是 | 修改附件上传时间,JSON 字段 `uploadedAt` |
+| DELETE | `/api/assets/{id}` | 是 | 删除附件,返回 204 |
+| GET | `/assets/{filename}` | 否 | 附件访问(缓存 1 小时) |
 | GET | `/actuator/health` | 否 | 健康检查 |
 
 ### 4.2 数据结构
@@ -150,17 +150,18 @@ curl -X DELETE "$HOST/api/docs/<id>" -H "Authorization: Bearer $KEY"
 
 - `PATCH /api/docs/{id}/uploaded-at` 和 `PATCH /api/assets/{id}/uploaded-at` 接收 JSON `{ "uploadedAt": "2026-10-14T12:00:00Z" }`。
 - `uploadedAt` 使用 `Instant` 解析合法 ISO-8601 时间，不限制过去或未来。
-- 文档接口只更新 `Document.uploadedAt`，不更新 `updatedAt`；图片接口只更新 `Asset.uploadedAt`。
+- 文档接口只更新 `Document.uploadedAt`，不更新 `updatedAt`；附件接口只更新 `Asset.uploadedAt`。
 - 文档时间变化会影响列表排序、`latest` 查询和前端按日期分组。
 - 两个接口均由 `ApiKeyFilter` 按写操作规则保护；不存在的 UUID 返回 `404`，缺失或非法时间返回 `400`。
 
-### 4.5 图片
+### 4.5 图片和 PDF
 
 ```bash
 curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@chart.png;type=image/png"
+curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@manual.pdf;type=application/pdf"
 ```
 
-在 Markdown 中使用返回的 `url`:`![](/assets/xxx.png)`。
+图片可在 Markdown 中使用返回的 `url`:`![](/assets/xxx.png)`；PDF 返回的 URL 可直接在浏览器中打开或下载。
 
 ### 4.6 校验与限制
 
@@ -169,9 +170,9 @@ curl -X POST "$HOST/api/assets" -H "Authorization: Bearer $KEY" -F "file=@chart.
 | 文档扩展名 | `.md` / `.markdown`(不区分大小写) | 400 |
 | 文档大小 | ≤ 5 MB(业务层校验) | 413 |
 | 文档编码 | 严格 UTF-8,否则拒绝 | 400 |
-| 图片扩展名 | png / jpg / jpeg / gif / webp / svg | 400 |
-| 图片大小 | ≤ 10 MB | 413 |
-| 图片 MIME | 必须与扩展名一致(jpg/jpeg → `image/jpeg`,svg → `image/svg+xml`,其余 `image/{ext}`) | 400 |
+| 附件扩展名 | png / jpg / jpeg / gif / webp / svg / pdf | 400 |
+| 附件大小 | ≤ 10 MB | 413 |
+| 附件 MIME | 必须与扩展名一致(jpg/jpeg → `image/jpeg`,svg → `image/svg+xml`,pdf → `application/pdf`,其余 `image/{ext}`) | 400 |
 | 文件名 | 去掉路径部分,长度 ≤ 255,不能为空/`.`/`..` | 400 |
 | 请求体 | multipart 单文件 10 MB,整个请求 11 MB | 413 |
 
@@ -269,8 +270,8 @@ Dockerfile 为三阶段:`node:26-alpine` 构建前端 → `maven:3.9-eclipse-tem
 2. 401 响应体为手写 JSON,缺少 `path`、`timestamp`,与统一错误格式不一致。
 3. `SecurityConfig` 全部 `permitAll`;设计稿中的 `hasRole("UPLOADER")` 与 `authenticationEntryPoint` 未实现。
 4. `SpaForwardController` 仅转发 `/`、`/doc/**`;其他未知路径返回后端 404,前端 404 页在生产环境不可达(设计稿为“非 `/api` 等前缀且不含 `.` 的路径都回退”)。
-5. `spring.web.resources.static-locations` 额外包含 assets 目录,与 `/assets/**` 处理器重复,可能暴露 `/{filename}` 路径下的图片。
-6. 删除文档/图片时磁盘文件删除失败被静默忽略(`IOException` 被吞掉);先删库后删文件。
+5. `spring.web.resources.static-locations` 额外包含 assets 目录,与 `/assets/**` 处理器重复,可能暴露 `/{filename}` 路径下的附件。
+6. 删除文档/附件时磁盘文件删除失败被静默忽略(`IOException` 被吞掉);先删库后删文件。
 7. 上传/覆盖的写入顺序是先写文件、再写库;库操作失败时可能残留文件。覆盖时旧文件被直接替换,事务回滚无法恢复。
 8. 设计稿要求的上传/删除操作日志、鉴权失败日志(来源 IP + 路径)、`X-Frame-Options` 等响应头未专门配置(依赖 Spring Security 默认)。
 9. `Dockerfile` 无 `HEALTHCHECK`。
